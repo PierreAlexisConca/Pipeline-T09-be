@@ -1,0 +1,22 @@
+# docker-compose -f docker-compose-db.yml up -d
+# docker-compose -f docker-compose-db.yml down
+version: '3'
+
+services:
+  sqlserver:
+    image: juan321/sql-server:2022   # cambiar por tu usuario de dockerhub
+    container_name: sql-server
+    environment:
+      SA_PASSWORD: "Admin12345"
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    networks:
+      - my-network
+
+# CREAR UNA RED EN ESTE COMPOSE PARA QUE SEA COMPARTIDA
+networks:
+  my-network:
+    name: my-network   # red compartida, visible desde ambos compose
+    driver: bridge
