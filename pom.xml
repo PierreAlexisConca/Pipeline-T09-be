@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.4</version>
+        <version>3.5.15</version>
         <relativePath/>
     </parent>
 
@@ -22,6 +22,17 @@
         <java.version>25</java.version>
         <lombok.version>1.18.44</lombok.version>
         <start-class>ap2.PierreAlexisConca.MybackendApplication</start-class>
+        <!-- ===== SECURITY OVERRIDES ===== -->
+        <!-- Tomcat: fixes all CRITICAL/HIGH/MEDIUM/LOW Tomcat CVEs -->
+        <tomcat.version>10.1.55</tomcat.version>
+        <!-- Spring Framework: fixes spring-core, spring-web, spring-webmvc CVEs -->
+        <spring-framework.version>6.2.18</spring-framework.version>
+        <!-- Logback: fixes CVE-2025-11226, CVE-2026-1225 -->
+        <logback.version>1.5.25</logback.version>
+        <!-- Jackson: fixes GHSA-72hv-8253-57qq -->
+        <jackson-bom.version>2.18.6</jackson-bom.version>
+        <!-- Commons Lang3: fixes CVE-2025-48924 -->
+        <commons-lang3.version>3.18.0</commons-lang3.version>
     </properties>
 
     <dependencies>
@@ -40,9 +51,11 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- mssql-jdbc: fixes CVE-2025-59250 -->
         <dependency>
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>mssql-jdbc</artifactId>
+            <version>12.10.2.jre11</version>
             <scope>runtime</scope>
         </dependency>
 
