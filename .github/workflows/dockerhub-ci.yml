@@ -40,7 +40,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./dockerfile-concaflores/Dockerfile
+          file: ./Dockerfile-concaflores/Dockerfile
           push: true
           tags: |
             ${{ steps.vars.outputs.username }}/pipeline-t09-be:latest
