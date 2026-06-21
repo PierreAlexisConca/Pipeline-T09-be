@@ -12,4 +12,5 @@ public interface ProductoService {
     Producto update(Producto producto);
     Producto delete(Long id);
     Producto restore(Long id);
+    Producto movimientoStock(Long productoId, Integer cantidad, String tipoMovimiento, String motivo);
 }

@@ -1,22 +1,30 @@
 package ap2.PierreAlexisConca.service.impl;
 
+import ap2.PierreAlexisConca.model.MovimientoProducto;
 import ap2.PierreAlexisConca.model.Producto;
+import ap2.PierreAlexisConca.repository.MovimientoProductoRepository;
 import ap2.PierreAlexisConca.repository.ProductoRepository;
 import ap2.PierreAlexisConca.service.ProductoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 @Service
 public class ProductoServiceImpl implements ProductoService {
+
     private final ProductoRepository productoRepository;
+    private final MovimientoProductoRepository movimientoProductoRepository;
 
     @Autowired
-    public ProductoServiceImpl(ProductoRepository productoRepository) {
+    public ProductoServiceImpl(ProductoRepository productoRepository,
+                               MovimientoProductoRepository movimientoProductoRepository) {
         this.productoRepository = productoRepository;
+        this.movimientoProductoRepository = movimientoProductoRepository;
     }
 
     @Override
@@ -88,5 +96,42 @@ public class ProductoServiceImpl implements ProductoService {
 
         producto.setState("A");
         return productoRepository.save(producto);
+    }
+
+    @Override
+    @Transactional
+    public Producto movimientoStock(Long productoId, Integer cantidad, String tipoMovimiento, String motivo) {
+        Producto producto = productoRepository.findById(
+                        Objects.requireNonNull(productoId, "productoId no puede ser null"))
+                .orElseThrow(() -> new RuntimeException("Producto not found"));
+
+        if (cantidad == null || cantidad <= 0) {
+            throw new IllegalArgumentException("La cantidad debe ser positiva");
+        }
+
+        String tipo = tipoMovimiento == null ? "" : tipoMovimiento.toUpperCase();
+        switch (tipo) {
+            case "ENTRADA" -> producto.setStock(producto.getStock() + cantidad);
+            case "SALIDA" -> {
+                if (producto.getStock() < cantidad) {
+                    throw new IllegalArgumentException("Stock insuficiente para realizar la salida");
+                }
+                producto.setStock(producto.getStock() - cantidad);
+            }
+            default -> throw new IllegalArgumentException(
+                    "tipoMovimiento inválido. Use 'ENTRADA' o 'SALIDA'");
+        }
+
+        Producto updated = productoRepository.save(producto);
+
+        MovimientoProducto movimiento = new MovimientoProducto();
+        movimiento.setProducto(updated);
+        movimiento.setTipoMovimiento(tipo);
+        movimiento.setCantidad(cantidad);
+        movimiento.setMotivo(motivo);
+        movimiento.setFecha(LocalDateTime.now());
+        movimientoProductoRepository.save(movimiento);
+
+        return updated;
     }
 }
