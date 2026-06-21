@@ -1,15 +1,26 @@
+# docker-compose -f docker-compose-db.yml up -d
+
+# docker-compose -f docker-compose-db.yml down
+
+#CASO DE JOSEPH2307 JOSEPH
+# por si no funciona poner "docker network create my-network"
+# prender
+# docker-compose -f docker-compose-joseph/docker-compose-be.yml up -d
+
+# apagar
+# docker-compose -f docker-compose-joseph/docker-compose-be.yml down
 version: '3'
 
 services:
   api:
-    image: joseph2307/joseph-backend:1.0
-    container_name: joseph-backend
+    image: joseph2307/springboot-sqlserver:1.0
+    container_name: springboot-sqlserver
     ports:
-      - "8087:8086"
+      - "8087:8087"
     environment:
-      - PORT=8086
+      - PORT=8087
       - SERVER_URL=http://localhost:8087
-      
+      - CORS_ALLOWED_ORIGINS=http://localhost:4200        # <-- cambia esto por la IP/dominio del frontend
       - SPRING_DATASOURCE_URL=jdbc:sqlserver://sqlserver:1433;databaseName=agro_db;encrypt=true;trustServerCertificate=true
       - SPRING_DATASOURCE_USERNAME=sa
       - SPRING_DATASOURCE_PASSWORD=Alexis123!
@@ -19,3 +30,4 @@ services:
 networks:
   my-network:
     external: true
+

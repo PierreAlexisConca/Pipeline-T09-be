@@ -1,15 +1,26 @@
+# docker-compose -f docker-compose-db.yml up -d
+
+# docker-compose -f docker-compose-db.yml down
+
+#CASO DE JOSEPH2307 JOSEPH
+# prender
+# docker-compose -f docker-compose-joseph/docker-compose-db.yml up -d
+
+# apagar
+# docker-compose -f docker-compose-joseph/docker-compose-db.yml down
+
 version: '3'
 
 services:
   sqlserver:
-    image: concaflores/sql-server:2022
+    image: joseph2307/sql-server:2022
     container_name: joseph-db
     environment:
       SA_PASSWORD: "Alexis123!"
       ACCEPT_EULA: "Y"
       MSSQL_PID: "Express"
     ports:
-      - "1435:1433"
+      - "1434:1433"
     networks:
       - my-network
 

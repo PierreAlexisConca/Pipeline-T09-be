@@ -1,6 +1,7 @@
 package ap2.PierreAlexisConca.rest;
 
 import ap2.PierreAlexisConca.dto.producto.ProductoRequest;
+import ap2.PierreAlexisConca.dto.producto.MovimientoStockRequest;
 import ap2.PierreAlexisConca.model.Producto;
 import ap2.PierreAlexisConca.service.ProductoService;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/productos")
 public class ProductoRest {
+
     private final ProductoService productoService;
 
     @Autowired
@@ -34,57 +36,103 @@ public class ProductoRest {
     @GetMapping("/{id}")
     public ResponseEntity<Producto> getProductoById(@PathVariable Long id) {
         Optional<Producto> producto = productoService.findById(id);
-        return producto.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+
+        return producto.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public Producto createProducto(@Valid @RequestBody ProductoRequest productoRequest) {
-        return productoService.save(toProducto(productoRequest));
+    public Producto createProducto(
+            @Valid @RequestBody ProductoRequest productoRequest) {
+
+        return productoService.save(
+                toProducto(productoRequest));
+    }
+
+    @PostMapping("/transaccional")
+    public ResponseEntity<Producto> transaccionalProducto(
+            @RequestBody MovimientoStockRequest request) {
+
+        return ResponseEntity.ok(
+                productoService.movimientoStock(
+                        request.getProductoId(),
+                        request.getCantidad(),
+                        request.getTipoMovimiento(),
+                        request.getMotivo()
+                )
+        );
+    }
+
+    @GetMapping("/transaccional")
+    public ResponseEntity<String> infoTransaccional() {
+
+        return ResponseEntity.ok(
+                "Transacción de movimiento de stock para productos");
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Producto> updateProducto(@PathVariable Long id, @Valid @RequestBody ProductoRequest productoRequest) {
-        if (!productoService.findById(id).isPresent()) {
+    public ResponseEntity<Producto> updateProducto(
+            @PathVariable Long id,
+            @Valid @RequestBody ProductoRequest productoRequest) {
+
+        if (productoService.findById(id).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+
         Producto producto = toProducto(productoRequest);
         producto.setId(id);
-        return ResponseEntity.ok(productoService.update(producto));
+
+        return ResponseEntity.ok(
+                productoService.update(producto));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProducto(@PathVariable Long id) {
-        if (!productoService.findById(id).isPresent()) {
+
+        if (productoService.findById(id).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+
         productoService.delete(id);
+
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/delete")
-    public ResponseEntity<Producto> logicalDeleteProducto(@PathVariable Long id) {
+    public ResponseEntity<Producto> logicalDeleteProducto(
+            @PathVariable Long id) {
+
         if (productoService.findById(id).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(productoService.delete(id));
+
+        return ResponseEntity.ok(
+                productoService.delete(id));
     }
 
     @PatchMapping("/{id}/restore")
-    public ResponseEntity<Producto> restoreProducto(@PathVariable Long id) {
+    public ResponseEntity<Producto> restoreProducto(
+            @PathVariable Long id) {
+
         if (productoService.findById(id).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(productoService.restore(id));
+
+        return ResponseEntity.ok(
+                productoService.restore(id));
     }
 
     private Producto toProducto(ProductoRequest request) {
+
         Producto producto = new Producto();
+
         producto.setNombre(request.getNombre());
         producto.setDescripcion(request.getDescripcion());
         producto.setPrecio(request.getPrecio());
         producto.setCodigo(request.getCodigo());
         producto.setStock(request.getStock());
         producto.setState(request.getState());
+
         return producto;
     }
 }

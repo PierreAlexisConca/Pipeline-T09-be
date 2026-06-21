@@ -1,7 +1,12 @@
 -- ========================================
 -- BASE DE DATOS: agro_db
 -- Sistema de Gestion Agricola
+-- Version final corregida con JSON, geography,
+-- JOINs, Stored Procedures e ÍNDICES
 -- ========================================
+
+
+
 
 -- ========================================
 -- 1. CREAR BASE DE DATOS
@@ -12,8 +17,14 @@ BEGIN
 END
 GO
 
+
+
+
 USE agro_db;
 GO
+
+
+
 
 -- ========================================
 -- 2. ELIMINAR TABLAS (orden por dependencias FK)
@@ -30,9 +41,15 @@ DROP TABLE IF EXISTS cliente;
 DROP TABLE IF EXISTS categoria;
 GO
 
+
+
+
 -- ========================================
 -- 3. CREAR TABLAS (objetos MAESTRO primero)
 -- ========================================
+
+
+
 
 -- [MAESTRO] Tabla categoria
 CREATE TABLE categoria (
@@ -50,6 +67,9 @@ CREATE TABLE categoria (
     deleted_at     DATETIME2,
     restored_at    DATETIME2
 );
+
+
+
 
 -- [MAESTRO] Tabla cliente
 -- JSON  : preferencias guarda config del cliente {"notificaciones":true,"idioma":"es","descuento":5}
@@ -73,6 +93,9 @@ CREATE TABLE cliente (
     restored_at      DATETIME2
 );
 
+
+
+
 -- [MAESTRO] Tabla contacto
 CREATE TABLE contacto (
     id             BIGINT       IDENTITY(1,1) PRIMARY KEY,
@@ -90,6 +113,9 @@ CREATE TABLE contacto (
     deleted_at     DATETIME2,
     restored_at    DATETIME2
 );
+
+
+
 
 -- [MAESTRO] Tabla producto
 -- FLOAT: precio | BIT: es_activo | DATE: fecha_vencimiento
@@ -110,6 +136,9 @@ CREATE TABLE producto (
     restored_at       DATETIME2
 );
 
+
+
+
 -- [MAESTRO] Tabla proveedores
 -- GEOGRAPHY: ubicacion GPS de la sede del proveedor
 CREATE TABLE proveedores (
@@ -128,6 +157,9 @@ CREATE TABLE proveedores (
     deleted_at   DATETIME2,
     restored_at  DATETIME2
 );
+
+
+
 
 -- [TRANSACCIONAL] Tabla pedido
 -- FK a cliente | CHECK en metodo_pago
@@ -151,6 +183,9 @@ CREATE TABLE pedido (
     CONSTRAINT fk_pedido_cliente FOREIGN KEY (cliente_id) REFERENCES cliente(id)
 );
 
+
+
+
 -- [TRANSACCIONAL] Tabla detalle_pedido
 -- FK a pedido y producto | UNIQUE compuesto evita duplicar producto en mismo pedido
 CREATE TABLE detalle_pedido (
@@ -173,9 +208,15 @@ CREATE TABLE detalle_pedido (
 );
 GO
 
+
+
+
 -- ========================================
 -- 3b. ÍNDICES
 -- ========================================
+
+
+
 
 -- ── pedido ──────────────────────────────────────────────────────────────────
 -- Cubre el JOIN pedido ↔ cliente presente en JOIN 1, 2, 3
@@ -184,11 +225,17 @@ GO
 CREATE INDEX ix_pedido_cliente_id
     ON pedido (cliente_id);
 
+
+
+
 -- Índice compuesto para el patrón WHERE state = 'A' AND fecha BETWEEN …
 -- usado en JOIN 3 (LEFT JOIN con filtro state) y en sp_historial_cliente.
 -- state va primero: descarta filas inactivas antes de evaluar el rango de fechas.
 CREATE INDEX ix_pedido_state_fecha
     ON pedido (state, fecha);
+
+
+
 
 -- ── detalle_pedido ───────────────────────────────────────────────────────────
 -- Cubre JOIN detalle_pedido ↔ pedido en JOIN 2, JOIN 4,
@@ -196,10 +243,16 @@ CREATE INDEX ix_pedido_state_fecha
 CREATE INDEX ix_detalle_pedido_id
     ON detalle_pedido (pedido_id);
 
+
+
+
 -- Cubre JOIN detalle_pedido ↔ producto en JOIN 2 y JOIN 4
 -- (productos más vendidos con SUM de cantidad y subtotal).
 CREATE INDEX ix_detalle_producto_id
     ON detalle_pedido (producto_id);
+
+
+
 
 -- ── cliente ──────────────────────────────────────────────────────────────────
 -- Cubre WHERE c.state = 'A' en JOIN 5, sp_registrar_pedido
@@ -208,12 +261,18 @@ CREATE INDEX ix_detalle_producto_id
 CREATE INDEX ix_cliente_state
     ON cliente (state);
 
+
+
+
 -- ── producto ─────────────────────────────────────────────────────────────────
 -- Cubre WHERE pr.state = 'A' en sp_registrar_pedido
 -- (validación de producto activo + lectura de precio y stock).
 -- NOTA: codigo ya tiene índice implícito por su constraint UNIQUE.
 CREATE INDEX ix_producto_state
     ON producto (state);
+
+
+
 
 -- ── proveedores ──────────────────────────────────────────────────────────────
 -- Patrón state = 'A' consistente con el resto del modelo;
@@ -222,11 +281,20 @@ CREATE INDEX ix_producto_state
 CREATE INDEX ix_proveedores_state
     ON proveedores (state);
 
+
+
+
 GO
+
+
+
 
 -- ========================================
 -- 4. INSERTAR DATOS
 -- ========================================
+
+
+
 
 INSERT INTO categoria (nombre, descripcion, codigo, prioridad, es_destacada, fecha_vigencia, state)
 VALUES
@@ -247,6 +315,9 @@ VALUES
 ('Energia Rural',          'Equipos de energia',                'CAT-015', 15,  0, '2026-12-31', 'I'),
 ('Proteccion',             'Equipos de proteccion personal',    'CAT-016', 16,  1, '2026-12-31', 'A');
 
+
+
+
 -- Clientes con JSON (preferencias) y GEOGRAPHY (coordenadas GPS)
 -- geography::Point(latitud, longitud, SRID=4326)
 INSERT INTO cliente
@@ -258,80 +329,128 @@ VALUES
  '{"notificaciones":true,"idioma":"es","descuento":5}',
  geography::Point(-12.0464,-77.0428,4326), 'A'),
 
+
+
+
 ('Ana',      'Torres',  'ana.torres@mail.com',   '988222333', 'Arequipa',
  '1992-08-21', 3000.00,
  '{"notificaciones":false,"idioma":"es","descuento":10}',
  geography::Point(-16.4090,-71.5375,4326), 'A'),
+
+
+
 
 ('Luis',     'Mendoza', 'luis.m@mail.com',       '977333444', 'Cusco',
  '1988-11-15', 1800.00,
  '{"notificaciones":true,"idioma":"es","descuento":0}',
  geography::Point(-13.5319,-71.9675,4326), 'A'),
 
+
+
+
 ('Maria',    'Lopez',   'maria.lopez@mail.com',  '966444555', 'Trujillo',
  '1996-05-30', 3200.00,
  '{"notificaciones":true,"idioma":"es","descuento":15}',
  geography::Point(-8.1116,-79.0289,4326),  'I'),
+
+
+
 
 ('Carlos',   'Rojas',   'carlos.r@mail.com',     '955555666', 'Piura',
  '1990-01-12', 1500.00,
  '{"notificaciones":false,"idioma":"es","descuento":0}',
  geography::Point(-5.1945,-80.6328,4326),  'A'),
 
+
+
+
 ('Jorge',    'Ramirez', 'jorge.r@mail.com',      '944666777', 'Tacna',
  '1987-07-22', 2800.00,
  '{"notificaciones":true,"idioma":"es","descuento":8}',
  geography::Point(-18.0066,-70.2462,4326), 'A'),
+
+
+
 
 ('Sofia',    'Castro',  'sofia.c@mail.com',      '933777888', 'Ica',
  '1998-04-01', 2100.00,
  '{"notificaciones":false,"idioma":"es","descuento":3}',
  geography::Point(-14.0678,-75.7286,4326), 'A'),
 
+
+
+
 ('Pedro',    'Diaz',    'pedro.d@mail.com',      '922888999', 'Puno',
  '1991-09-19', 2600.00,
  '{"notificaciones":true,"idioma":"es","descuento":0}',
  geography::Point(-15.8402,-70.0219,4326), 'A'),
+
+
+
 
 ('Elena',    'Salas',   'elena.s@mail.com',      '911111112', 'Chiclayo',
  '1993-12-08', 2900.00,
  '{"notificaciones":true,"idioma":"es","descuento":6}',
  geography::Point(-6.7700,-79.8409,4326),  'A'),
 
+
+
+
 ('Ricardo',  'Vega',    'ricardo.v@mail.com',    '911111113', 'Huancayo',
  '1989-02-17', 2400.00,
  '{"notificaciones":false,"idioma":"es","descuento":4}',
  geography::Point(-12.0651,-75.2049,4326), 'A'),
+
+
+
 
 ('Patricia', 'Nunez',   'patricia.n@mail.com',   '911111114', 'Ayacucho',
  '1995-10-14', 2750.00,
  '{"notificaciones":true,"idioma":"es","descuento":7}',
  geography::Point(-13.1631,-74.2236,4326), 'A'),
 
+
+
+
 ('Diego',    'Flores',  'diego.f@mail.com',      '911111115', 'Pucallpa',
  '1997-03-03', 1650.00,
  '{"notificaciones":false,"idioma":"es","descuento":2}',
  geography::Point(-8.3791,-74.5539,4326),  'A'),
+
+
+
 
 ('Valeria',  'Ortega',  'valeria.o@mail.com',    '911111116', 'Tarapoto',
  '1994-06-26', 3500.00,
  '{"notificaciones":true,"idioma":"es","descuento":12}',
  geography::Point(-6.4824,-76.3659,4326),  'A'),
 
+
+
+
 ('Raul',     'Campos',  'raul.c@mail.com',       '911111117', 'Huaraz',
  '1986-09-11', 2200.00,
  '{"notificaciones":true,"idioma":"es","descuento":1}',
  geography::Point(-9.5300,-77.5286,4326),  'I'),
+
+
+
 
 ('Daniela',  'Morales', 'daniela.m@mail.com',    '911111118', 'Moquegua',
  '1999-01-05', 3100.00,
  '{"notificaciones":false,"idioma":"es","descuento":9}',
  geography::Point(-17.1928,-70.9342,4326), 'A'),
 
+
+
+
 ('Alberto',  'Paredes', 'alberto.p@mail.com',    '911111119', 'Cajamarca',
  '1992-04-28', 2050.00,
  '{"notificaciones":true,"idioma":"es","descuento":5}',
  geography::Point(-7.1617,-78.5128,4326),  'A');
+
+
+
 
 INSERT INTO contacto
     (nombre, telefono, email, cargo, extension, principal, fecha_registro, state)
@@ -353,6 +472,9 @@ VALUES
 ('Daniela Morales', '911111118', 'daniela.m@mail.com',    'Planner',    115, 0, '2026-01-12', 'A'),
 ('Alberto Paredes', '911111119', 'alberto.p@mail.com',    'Inspector',  116, 1, '2026-01-12', 'A');
 
+
+
+
 INSERT INTO producto
     (nombre, descripcion, precio, codigo, stock, es_activo, fecha_vencimiento, state)
 VALUES
@@ -372,6 +494,9 @@ VALUES
 ('Bomba de agua',      'Bomba electrica',         420.00, 'PROD-014',  12, 1, '2033-01-01', 'A'),
 ('Semilla de quinua',  'Semilla certificada',      14.00, 'PROD-015', 260, 1, '2027-12-31', 'A'),
 ('Casco de seguridad', 'EPP para campo',           19.00, 'PROD-016', 130, 1, '2031-01-01', 'A');
+
+
+
 
 -- Proveedores con GEOGRAPHY (sede de la empresa)
 INSERT INTO proveedores
@@ -394,6 +519,9 @@ VALUES
 ('20555666777','911223344','AgriSupply',              'Daniela Morales','Moquegua',    'info@agrisupply.pe',      geography::Point(-17.1928,-70.9342,4326), 'A'),
 ('20666777888','922334455','BioAndina',               'Alberto Paredes','Ancash',      'contacto@bioandina.pe',   geography::Point(-9.5300,-77.5286,4326),  'A');
 
+
+
+
 INSERT INTO pedido (numero, fecha, cliente_id, metodo_pago, total, state)
 VALUES
 ('PED-001','2026-04-01',  1, 'efectivo',      110.00, 'A'),
@@ -412,6 +540,9 @@ VALUES
 ('PED-014','2026-04-14', 14, 'transferencia', 420.00, 'A'),
 ('PED-015','2026-04-15', 15, 'credito',        70.00, 'A'),
 ('PED-016','2026-04-16', 16, 'efectivo',       57.00, 'A');
+
+
+
 
 INSERT INTO detalle_pedido (pedido_id, producto_id, cantidad, precio_unitario, subtotal)
 VALUES
@@ -436,9 +567,15 @@ VALUES
 (16, 11, 1,   33.00,  33.00);
 GO
 
+
+
+
 -- ========================================
 -- 5. CONSULTAS DE VERIFICACION CON JOINS
 -- ========================================
+
+
+
 
 -- [JOIN 1] INNER JOIN: pedidos con nombre completo del cliente
 -- Aprovecha: ix_pedido_cliente_id
@@ -453,6 +590,9 @@ SELECT
 FROM pedido p
 INNER JOIN cliente c ON p.cliente_id = c.id
 ORDER BY p.fecha;
+
+
+
 
 -- [JOIN 2] INNER JOIN encadenado: detalle completo (4 tablas)
 -- Aprovecha: ix_pedido_cliente_id, ix_detalle_pedido_id, ix_detalle_producto_id
@@ -470,6 +610,9 @@ INNER JOIN cliente  c  ON p.cliente_id   = c.id
 INNER JOIN producto pr ON dp.producto_id = pr.id
 ORDER BY p.numero, pr.nombre;
 
+
+
+
 -- [JOIN 3] LEFT JOIN: todos los clientes aunque no tengan pedidos + dato JSON
 -- Aprovecha: ix_pedido_cliente_id, ix_pedido_state_fecha, ix_cliente_state
 SELECT
@@ -483,6 +626,9 @@ FROM cliente c
 LEFT JOIN pedido p ON c.id = p.cliente_id AND p.state = 'A'
 GROUP BY c.nombre, c.apellido, c.email, c.limite_credito, c.preferencias
 ORDER BY monto_total_comprado DESC;
+
+
+
 
 -- [JOIN 4] LEFT JOIN: productos mas vendidos con stock actual
 -- Aprovecha: ix_detalle_producto_id
@@ -499,6 +645,9 @@ LEFT JOIN detalle_pedido dp ON pr.id = dp.producto_id
 GROUP BY pr.id, pr.codigo, pr.nombre, pr.precio, pr.stock, pr.es_activo
 ORDER BY unidades_vendidas DESC;
 
+
+
+
 -- [JOIN 5] JSON + GEOGRAPHY: preferencias y coordenadas GPS de clientes activos
 -- Aprovecha: ix_cliente_state
 -- Nota: se usa .Lat para latitud y .Long para longitud
@@ -513,9 +662,17 @@ FROM cliente c
 WHERE c.state = 'A'
   AND c.ubicacion IS NOT NULL;
 
+
+
+
 -- ========================================
 -- [JOIN 6] INNER JOIN: proveedores activos con contacto asociado
 -- Construccion:
+--   Se usa INNER JOIN entre proveedores y contacto por email.
+--   Solo devuelve filas donde ambas tablas tienen coincidencia.
+-- Funcionamiento:
+--   Si un proveedor no tiene contacto registrado con el mismo email,
+--   no aparece en el resultado.
 -- ========================================
 SELECT
     p.ruc,
@@ -531,9 +688,16 @@ INNER JOIN contacto c ON p.email = c.email
 WHERE p.state = 'A'
 ORDER BY p.company_name;
 
+
+
+
 -- ========================================
 -- [JOIN 7] RIGHT JOIN: todos los contactos y su proveedor si existe
 -- Construccion:
+--   proveedores es la tabla izquierda y contacto la derecha.
+-- Funcionamiento:
+--   Retorna TODOS los contactos. Si no hay proveedor coincidente,
+--   las columnas de proveedor quedan en NULL.
 -- ========================================
 SELECT
     p.ruc,
@@ -550,8 +714,15 @@ FROM proveedores p
 RIGHT JOIN contacto c ON p.email = c.email
 ORDER BY c.nombre;
 
+
+
+
 -- ========================================
 -- [JOIN 8] FULL OUTER JOIN: auditoria de coincidencia proveedor-contacto
+-- Construccion:
+--   Combina proveedores y contacto mostrando coincidencias y no coincidencias.
+-- Funcionamiento:
+--   Muestra proveedores sin contacto y contactos sin proveedor asociado.
 -- ========================================
 SELECT
     ISNULL(p.company_name, 'SIN PROVEEDOR') AS empresa,
@@ -568,12 +739,71 @@ FULL OUTER JOIN contacto c ON p.email = c.email
 ORDER BY empresa, contacto;
 GO
 
+
+-- ========================================
+-- CONSULTA 9
+-- PRODUCTOS MAS VENDIDOS
+-- ========================================
+
+
+SELECT
+    pr.codigo,
+    pr.nombre,
+    pr.stock,
+    SUM(dp.cantidad) AS total_vendido,
+    SUM(dp.subtotal) AS ingreso_generado
+FROM producto pr
+INNER JOIN detalle_pedido dp
+    ON pr.id = dp.producto_id
+GROUP BY
+    pr.codigo,
+    pr.nombre,
+    pr.stock
+ORDER BY total_vendido DESC;
+
+
+-- ========================================
+-- CONSULTA 10
+-- PRODUCTOS PROXIMOS A VENCER
+-- ========================================
+
+
+SELECT
+    codigo,
+    nombre,
+    stock,
+    fecha_vencimiento
+FROM producto
+WHERE fecha_vencimiento
+      BETWEEN GETDATE()
+      AND DATEADD(MONTH,6,GETDATE())
+ORDER BY fecha_vencimiento;
+
+
 -- ========================================
 -- 6. STORED PROCEDURES
+-- ========================================
+-- Un Stored Procedure (SP) es un bloque de codigo SQL
+-- guardado en el servidor con un nombre. Se llama con EXEC.
+-- Ventajas: reutilizacion, seguridad, rendimiento, mantenimiento.
+-- ========================================
+
+
+
 
 -- --------------------------------------------------
 -- SP 1: Registrar un nuevo pedido con su detalle
--- ========================================
+-- Parametros: numero, fecha, cliente_id, metodo_pago,
+--             producto_id, cantidad
+-- Valida: cliente activo, producto activo, stock suficiente
+-- Usa transaccion para garantizar integridad total
+-- Índices que aprovecha:
+--   ix_cliente_state      → valida cliente activo
+--   ix_producto_state     → valida producto activo + lee precio/stock
+--   ix_pedido_cliente_id  → SELECT final con JOIN
+--   ix_detalle_pedido_id  → SELECT final con JOIN
+--   ix_detalle_producto_id→ SELECT final con JOIN
+-- --------------------------------------------------
 DROP PROCEDURE IF EXISTS sp_registrar_pedido;
 GO
 CREATE PROCEDURE sp_registrar_pedido
@@ -587,10 +817,16 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+
+
+
     DECLARE @precio_unit  FLOAT;
     DECLARE @stock_actual INT;
     DECLARE @subtotal     FLOAT;
     DECLARE @pedido_id    BIGINT;
+
+
+
 
     -- Validar cliente activo
     -- ix_cliente_state filtra state = 'A' eficientemente
@@ -600,6 +836,9 @@ BEGIN
         RETURN;
     END
 
+
+
+
     -- Obtener precio y stock del producto
     -- ix_producto_state filtra state = 'A' eficientemente
     SELECT @precio_unit  = precio,
@@ -607,11 +846,17 @@ BEGIN
     FROM producto
     WHERE id = @producto_id AND state = 'A';
 
+
+
+
     IF @precio_unit IS NULL
     BEGIN
         RAISERROR('El producto no existe o esta inactivo.', 16, 1);
         RETURN;
     END
+
+
+
 
     -- Validar stock suficiente
     IF @stock_actual < @cantidad
@@ -620,7 +865,13 @@ BEGIN
         RETURN;
     END
 
+
+
+
     SET @subtotal = @precio_unit * @cantidad;
+
+
+
 
     BEGIN TRANSACTION;
     BEGIN TRY
@@ -628,11 +879,20 @@ BEGIN
         INSERT INTO pedido (numero, fecha, cliente_id, metodo_pago, total, state)
         VALUES (@numero, @fecha, @cliente_id, @metodo_pago, @subtotal, 'A');
 
+
+
+
         SET @pedido_id = SCOPE_IDENTITY();
+
+
+
 
         -- Insertar detalle del pedido
         INSERT INTO detalle_pedido (pedido_id, producto_id, cantidad, precio_unitario, subtotal)
         VALUES (@pedido_id, @producto_id, @cantidad, @precio_unit, @subtotal);
+
+
+
 
         -- Descontar stock del producto
         UPDATE producto
@@ -640,7 +900,13 @@ BEGIN
             updated_at = SYSDATETIME()
         WHERE id = @producto_id;
 
+
+
+
         COMMIT TRANSACTION;
+
+
+
 
         -- Retornar resumen con JOIN
         -- ix_pedido_cliente_id, ix_detalle_pedido_id, ix_detalle_producto_id
@@ -658,6 +924,9 @@ BEGIN
         INNER JOIN producto       pr ON dp.producto_id = pr.id
         WHERE p.id = @pedido_id;
 
+
+
+
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
@@ -667,8 +936,14 @@ BEGIN
 END;
 GO
 
+
+
+
 -- --------------------------------------------------
 -- SP 2: Consultar historial de compras de un cliente
+-- Parametros: cliente_id, fecha_desde (opcional), fecha_hasta (opcional)
+-- Devuelve 3 resultsets: datos del cliente, detalle de pedidos, resumen
+-- Índices que aprovecha:
 --   ix_pedido_cliente_id   → filtra pedidos por cliente
 --   ix_pedido_state_fecha  → filtra state = 'A' AND fecha BETWEEN
 --   ix_detalle_pedido_id   → JOIN detalle_pedido ↔ pedido
@@ -684,9 +959,15 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+
+
+
     -- Fechas por defecto si no se pasan
     SET @fecha_desde = ISNULL(@fecha_desde, '2000-01-01');
     SET @fecha_hasta = ISNULL(@fecha_hasta, CAST(GETDATE() AS DATE));
+
+
+
 
     -- Validar que el cliente existe
     IF NOT EXISTS (SELECT 1 FROM cliente WHERE id = @cliente_id)
@@ -694,6 +975,9 @@ BEGIN
         RAISERROR('Cliente no encontrado.', 16, 1);
         RETURN;
     END
+
+
+
 
     -- Resultado 1: datos del cliente con JSON y GEOGRAPHY
     SELECT
@@ -706,6 +990,9 @@ BEGIN
         c.ubicacion.Long                              AS longitud
     FROM cliente c
     WHERE c.id = @cliente_id;
+
+
+
 
     -- Resultado 2: detalle de pedidos con INNER JOINs
     -- ix_pedido_cliente_id  → lookup rápido por cliente
@@ -730,6 +1017,9 @@ BEGIN
       AND p.fecha BETWEEN @fecha_desde AND @fecha_hasta
     ORDER BY p.fecha DESC, pr.nombre;
 
+
+
+
     -- Resultado 3: resumen del periodo
     -- ix_pedido_cliente_id  + ix_pedido_state_fecha → filtro compuesto
     SELECT
@@ -744,9 +1034,42 @@ BEGIN
 END;
 GO
 
+
+-- --------------------------------------------------
+--SP 3
+--sp_productos_bajo_stock
+-- ========================================
+
+
+DROP PROCEDURE IF EXISTS sp_productos_bajo_stock;
+GO
+
+
+CREATE PROCEDURE sp_productos_bajo_stock
+    @stock_minimo INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+
+    SELECT
+        codigo,
+        nombre,
+        stock,
+        precio
+    FROM producto
+    WHERE stock <= @stock_minimo
+    ORDER BY stock;
+END;
+GO
+
+
 -- ========================================
 -- 7. EJECUTAR LOS STORED PROCEDURES
 -- ========================================
+
+
+
 
 -- SP1: Registrar pedido para Juan Perez (id=1)
 --      comprando 10 unidades de Semilla de maiz (id=3)
@@ -758,6 +1081,9 @@ EXEC sp_registrar_pedido
     @producto_id = 3,
     @cantidad    = 10;
 
+
+
+
 -- SP2: Ver historial completo de Juan Perez en 2026
 EXEC sp_historial_cliente
     @cliente_id  = 1,
@@ -765,10 +1091,26 @@ EXEC sp_historial_cliente
     @fecha_hasta = '2026-12-31';
 GO
 
+
+
+
 -- ========================================
 -- 8. ÍNDICES Y PLAN DE EJECUCIÓN - CRUD PROVEEDORES
 -- ========================================
-----------------------------------------
+-- Cada consulta se ejecuta antes y después del índice usando
+-- SET STATISTICS IO/TIME para comparar lecturas lógicas y tiempo.
+-- Para demostrar el plan de ejecución real en SQL Server Management Studio:
+--   1. Activar Include Actual Execution Plan (Ctrl+M).
+--   2. Ejecutar primero la consulta ANTES del índice y guardar captura.
+--   3. Crear el índice.
+--   4. Ejecutar la misma consulta DESPUÉS del índice y guardar captura.
+--   5. Comparar operadores como Table Scan, Index Scan, Index Seek y Sort.
+-- ========================================
+
+
+
+
+-- --------------------------------------------------
 -- INDICE 1: FILTERED INDEX para proveedores activos por nombre
 -- Antes del índice: el motor tiende a escanear más filas.
 -- Después del índice: puede hacer Index Seek sobre proveedores activos.
@@ -779,6 +1121,9 @@ GO
 SET STATISTICS IO ON;
 SET STATISTICS TIME ON;
 
+
+
+
 SELECT
     p.ruc,
     p.company_name,
@@ -788,9 +1133,15 @@ FROM proveedores p
 WHERE p.state = 'A'
   AND p.company_name LIKE 'Agro%';
 
+
+
+
 SET STATISTICS IO OFF;
 SET STATISTICS TIME OFF;
 GO
+
+
+
 
 CREATE INDEX ix_proveedores_nombre_activo
     ON proveedores (company_name)
@@ -798,8 +1149,14 @@ CREATE INDEX ix_proveedores_nombre_activo
     WHERE state = 'A';
 GO
 
+
+
+
 SET STATISTICS IO ON;
 SET STATISTICS TIME ON;
+
+
+
 
 SELECT
     p.ruc,
@@ -810,9 +1167,15 @@ FROM proveedores p
 WHERE p.state = 'A'
   AND p.company_name LIKE 'Agro%';
 
+
+
+
 SET STATISTICS IO OFF;
 SET STATISTICS TIME OFF;
 GO
+
+
+
 
 -- --------------------------------------------------
 -- INDICE 2: índice compuesto para búsquedas por estado y nombre
@@ -825,6 +1188,9 @@ GO
 SET STATISTICS IO ON;
 SET STATISTICS TIME ON;
 
+
+
+
 SELECT
     p.ruc,
     p.company_name,
@@ -834,17 +1200,29 @@ FROM proveedores p
 WHERE p.state = 'A'
 ORDER BY p.company_name;
 
+
+
+
 SET STATISTICS IO OFF;
 SET STATISTICS TIME OFF;
 GO
+
+
+
 
 CREATE INDEX ix_proveedores_state_company
     ON proveedores (state, company_name)
     INCLUDE (ruc, contact_name, cellphone);
 GO
 
+
+
+
 SET STATISTICS IO ON;
 SET STATISTICS TIME ON;
+
+
+
 
 SELECT
     p.ruc,
@@ -855,9 +1233,15 @@ FROM proveedores p
 WHERE p.state = 'A'
 ORDER BY p.company_name;
 
+
+
+
 SET STATISTICS IO OFF;
 SET STATISTICS TIME OFF;
 GO
+
+
+
 
 -- --------------------------------------------------
 -- INDICE 3: índice cubriente para búsqueda por email
@@ -870,6 +1254,9 @@ GO
 SET STATISTICS IO ON;
 SET STATISTICS TIME ON;
 
+
+
+
 SELECT
     p.ruc,
     p.company_name,
@@ -878,17 +1265,29 @@ SELECT
 FROM proveedores p
 WHERE p.email = 'contacto@agroperu.pe';
 
+
+
+
 SET STATISTICS IO OFF;
 SET STATISTICS TIME OFF;
 GO
+
+
+
 
 CREATE INDEX ix_proveedores_email_cubriente
     ON proveedores (email)
     INCLUDE (ruc, company_name, state);
 GO
 
+
+
+
 SET STATISTICS IO ON;
 SET STATISTICS TIME ON;
+
+
+
 
 SELECT
     p.ruc,
@@ -898,15 +1297,189 @@ SELECT
 FROM proveedores p
 WHERE p.email = 'contacto@agroperu.pe';
 
+
+
+
 SET STATISTICS IO OFF;
 SET STATISTICS TIME OFF;
 GO
+
+
+
+
+-- --------------------------------------------------
+-- INDICE 4: FILTERED INDEX para productos activos
+-- Antes del índice: el motor puede escanear toda la tabla.
+-- Después del índice: puede hacer Index Seek sobre productos activos.
+-- Plan esperado:
+-- antes -> Scan sobre producto.
+-- despues-> Index Seek sobre ix_producto_nombre_activo.
+-- --------------------------------------------------
+
+
+SET STATISTICS IO ON;
+SET STATISTICS TIME ON;
+
+
+SELECT
+    codigo,
+    nombre,
+    precio,
+    stock
+FROM producto
+WHERE state = 'A'
+    AND nombre LIKE 'S%';
+
+
+SET STATISTICS IO OFF;
+SET STATISTICS TIME OFF;
+GO
+
+
+CREATE INDEX ix_producto_nombre_activo
+ON producto(nombre)
+INCLUDE(codigo, precio, stock)
+WHERE state = 'A';
+GO
+
+
+SET STATISTICS IO ON;
+SET STATISTICS TIME ON;
+
+
+SELECT
+    codigo,
+    nombre,
+    precio,
+    stock
+FROM producto
+WHERE state = 'A'
+    AND nombre LIKE 'S%';
+
+
+SET STATISTICS IO OFF;
+SET STATISTICS TIME OFF;
+GO
+
+
+
+
+-- --------------------------------------------------
+-- INDICE 5: índice compuesto para búsquedas por estado
+-- y fecha de vencimiento.
+-- Antes del índice: posible Table Scan.
+-- Después del índice: búsqueda optimizada por filtros compuestos.
+-- Plan esperado:
+-- antes -> Table Scan.
+-- despues-> Index Seek sobre ix_producto_estado_vencimiento.
+-- --------------------------------------------------
+
+
+SET STATISTICS IO ON;
+SET STATISTICS TIME ON;
+
+
+SELECT
+    codigo,
+    nombre,
+    stock,
+    fecha_vencimiento
+FROM producto
+WHERE state = 'A'
+ORDER BY fecha_vencimiento;
+
+
+SET STATISTICS IO OFF;
+SET STATISTICS TIME OFF;
+GO
+
+
+CREATE INDEX ix_producto_estado_vencimiento
+ON producto(state, fecha_vencimiento);
+GO
+
+
+SET STATISTICS IO ON;
+SET STATISTICS TIME ON;
+
+
+SELECT
+    codigo,
+    nombre,
+    stock,
+    fecha_vencimiento
+FROM producto
+WHERE state = 'A'
+ORDER BY fecha_vencimiento;
+
+
+SET STATISTICS IO OFF;
+SET STATISTICS TIME OFF;
+GO
+
+
+-- --------------------------------------------------
+-- INDICE 6: índice cubriente para búsqueda por código.
+-- Antes del índice: lecturas adicionales para recuperar columnas.
+-- Después del índice: consulta cubierta por el índice.
+-- Plan esperado:
+-- antes -> Scan o Key Lookup.
+-- despues-> Index Seek cubierto.
+-- --------------------------------------------------
+
+
+SET STATISTICS IO ON;
+SET STATISTICS TIME ON;
+
+
+SELECT
+    codigo,
+    nombre,
+    precio,
+    stock,
+    state
+FROM producto
+WHERE codigo = 'PROD-001';
+
+
+SET STATISTICS IO OFF;
+SET STATISTICS TIME OFF;
+GO
+
+
+CREATE INDEX ix_producto_codigo_cubriente
+ON producto(codigo)
+INCLUDE(nombre, precio, stock, state);
+GO
+
+
+SET STATISTICS IO ON;
+SET STATISTICS TIME ON;
+
+
+SELECT
+    codigo,
+    nombre,
+    precio,
+    stock,
+    state
+FROM producto
+WHERE codigo = 'PROD-001';
+
+
+SET STATISTICS IO OFF;
+SET STATISTICS TIME OFF;
+GO
+
 
 -- ========================================
 -- 9. TRIGGERS - CRUD PROVEEDORES
 -- ========================================
 -- Se crea una tabla de bitácora para auditar inserciones y cambios.
 -- ========================================
+
+
+
 
 CREATE TABLE auditoria_proveedor (
     id               BIGINT IDENTITY(1,1) PRIMARY KEY,
@@ -920,6 +1493,20 @@ CREATE TABLE auditoria_proveedor (
 );
 GO
 
+
+CREATE TABLE auditoria_producto (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    producto_id BIGINT NOT NULL,
+    operacion VARCHAR(20) NOT NULL,
+    campo_modificado VARCHAR(50) NOT NULL,
+    valor_anterior NVARCHAR(255),
+    valor_nuevo NVARCHAR(255),
+    usuario_bd NVARCHAR(128) NOT NULL DEFAULT SYSTEM_USER,
+    fecha_evento DATETIME2 NOT NULL DEFAULT SYSDATETIME()
+);
+GO
+
+
 -- --------------------------------------------------
 -- Trigger 1: AFTER INSERT
 -- Automatiza la bitácora de nuevos proveedores registrados.
@@ -930,6 +1517,9 @@ AFTER INSERT
 AS
 BEGIN
     SET NOCOUNT ON;
+
+
+
 
     INSERT INTO auditoria_proveedor
         (proveedor_id, operacion, campo_modificado, valor_anterior, valor_nuevo)
@@ -943,6 +1533,13 @@ BEGIN
 END;
 GO
 
+
+
+
+
+
+
+
 -- --------------------------------------------------
 -- Trigger 2: AFTER UPDATE
 -- Audita cambios sensibles del proveedor: nombre, email y estado.
@@ -955,12 +1552,18 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+
+
+
     INSERT INTO auditoria_proveedor
         (proveedor_id, operacion, campo_modificado, valor_anterior, valor_nuevo)
     SELECT i.id, 'UPDATE', 'company_name', d.company_name, i.company_name
     FROM inserted i
     INNER JOIN deleted d ON i.id = d.id
     WHERE ISNULL(i.company_name, '') <> ISNULL(d.company_name, '');
+
+
+
 
     INSERT INTO auditoria_proveedor
         (proveedor_id, operacion, campo_modificado, valor_anterior, valor_nuevo)
@@ -969,12 +1572,18 @@ BEGIN
     INNER JOIN deleted d ON i.id = d.id
     WHERE ISNULL(i.email, '') <> ISNULL(d.email, '');
 
+
+
+
     INSERT INTO auditoria_proveedor
         (proveedor_id, operacion, campo_modificado, valor_anterior, valor_nuevo)
     SELECT i.id, 'UPDATE', 'state', d.state, i.state
     FROM inserted i
     INNER JOIN deleted d ON i.id = d.id
     WHERE ISNULL(i.state, '') <> ISNULL(d.state, '');
+
+
+
 
     UPDATE p
     SET p.updated_at = SYSDATETIME()
@@ -983,12 +1592,156 @@ BEGIN
 END;
 GO
 
+
+-- --------------------------------------------------
+-- Trigger 3: AFTER INSERT
+-- Automatiza la bitácora de nuevos productos registrados.
+-- --------------------------------------------------
+
+
+CREATE TRIGGER tr_producto_after_insert
+ON producto
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+
+    INSERT INTO auditoria_producto
+    (
+        producto_id,
+        operacion,
+        campo_modificado,
+        valor_anterior,
+        valor_nuevo
+    )
+    SELECT
+        i.id,
+        'INSERT',
+        'registro_completo',
+        NULL,
+        'Producto=' + i.nombre +
+        ', Precio=' + CAST(i.precio AS VARCHAR(20)) +
+        ', Stock=' + CAST(i.stock AS VARCHAR(20))
+    FROM inserted i;
+END;
+GO
+
+
+-- --------------------------------------------------
+-- Trigger 4: AFTER UPDATE
+-- Audita cambios sensibles del producto:
+-- nombre, precio, stock y estado.
+-- Además actualiza updated_at automáticamente.
+-- --------------------------------------------------
+
+
+CREATE TRIGGER tr_producto_after_update
+ON producto
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+
+    INSERT INTO auditoria_producto
+    (
+        producto_id,
+        operacion,
+        campo_modificado,
+        valor_anterior,
+        valor_nuevo
+    )
+    SELECT
+        i.id,
+        'UPDATE',
+        'nombre',
+        d.nombre,
+        i.nombre
+    FROM inserted i
+    INNER JOIN deleted d
+        ON i.id = d.id
+    WHERE ISNULL(i.nombre,'') <> ISNULL(d.nombre,'');
+
+
+    INSERT INTO auditoria_producto
+    (
+        producto_id,
+        operacion,
+        campo_modificado,
+        valor_anterior,
+        valor_nuevo
+    )
+    SELECT
+        i.id,
+        'UPDATE',
+        'precio',
+        CAST(d.precio AS VARCHAR(50)),
+        CAST(i.precio AS VARCHAR(50))
+    FROM inserted i
+    INNER JOIN deleted d
+        ON i.id = d.id
+    WHERE i.precio <> d.precio;
+
+
+    INSERT INTO auditoria_producto
+    (
+        producto_id,
+        operacion,
+        campo_modificado,
+        valor_anterior,
+        valor_nuevo
+    )
+    SELECT
+        i.id,
+        'UPDATE',
+        'stock',
+        CAST(d.stock AS VARCHAR(50)),
+        CAST(i.stock AS VARCHAR(50))
+    FROM inserted i
+    INNER JOIN deleted d
+        ON i.id = d.id
+    WHERE i.stock <> d.stock;
+
+
+    INSERT INTO auditoria_producto
+    (
+        producto_id,
+        operacion,
+        campo_modificado,
+        valor_anterior,
+        valor_nuevo
+    )
+    SELECT
+        i.id,
+        'UPDATE',
+        'state',
+        d.state,
+        i.state
+    FROM inserted i
+    INNER JOIN deleted d
+        ON i.id = d.id
+    WHERE i.state <> d.state;
+
+
+    UPDATE p
+    SET updated_at = SYSDATETIME()
+    FROM producto p
+    INNER JOIN inserted i
+        ON p.id = i.id;
+END;
+GO
+
+
 -- Pruebas rápidas del CRUD de proveedores
 INSERT INTO proveedores
     (ruc, cellphone, company_name, contact_name, address, email, ubicacion, state)
 VALUES
     ('20999999991', '900000001', 'Proveedor Demo', 'Demo Contacto', 'Lima Demo', 'demo@proveedor.pe', geography::Point(-12.0500,-77.0300,4326), 'A');
 GO
+
+
+
 
 UPDATE proveedores
 SET company_name = 'Proveedor Demo Actualizado',
@@ -997,344 +1750,57 @@ SET company_name = 'Proveedor Demo Actualizado',
 WHERE ruc = '20999999991';
 GO
 
+
+
+
 SELECT *
 FROM auditoria_proveedor
 ORDER BY fecha_evento DESC;
 GO
 
 
--- ========================================
--- 10. CLIENTE: JOINs, VISTAS, INDICES Y TRIGGERS
--- ========================================
--- Ordenado para evidenciar: primero Proveedor (seccion 9), luego Cliente.
--- ========================================
+-- Pruebas rápidas del CRUD de productos
 
--- ========================================
--- 10.1 VISTAS (CLIENTE)
--- ========================================
-DROP VIEW IF EXISTS vw_cliente_resumen_compras;
-GO
-CREATE VIEW vw_cliente_resumen_compras
-AS
-SELECT
-    c.id,
-    c.nombre,
-    c.apellido,
-    c.email,
-    c.state,
-    COUNT(p.id) AS total_pedidos_activos,
-    ISNULL(SUM(p.total), 0) AS monto_total_activo,
-    MAX(p.fecha) AS fecha_ultima_compra
-FROM cliente c
-LEFT JOIN pedido p ON p.cliente_id = c.id AND p.state = 'A'
-GROUP BY c.id, c.nombre, c.apellido, c.email, c.state;
-GO
 
-DROP VIEW IF EXISTS vw_cliente_preferencias_geo;
-GO
-CREATE VIEW vw_cliente_preferencias_geo
-AS
-SELECT
-    c.id,
-    c.nombre,
-    c.apellido,
-    c.email,
-    JSON_VALUE(c.preferencias, '$.idioma') AS idioma,
-    JSON_VALUE(c.preferencias, '$.notificaciones') AS notificaciones,
-    JSON_VALUE(c.preferencias, '$.descuento') AS descuento_pct,
-    c.ubicacion.Lat AS latitud,
-    c.ubicacion.Long AS longitud
-FROM cliente c
-WHERE c.state = 'A'
-  AND c.ubicacion IS NOT NULL;
+INSERT INTO producto
+(
+    nombre,
+    descripcion,
+    precio,
+    codigo,
+    stock,
+    es_activo,
+    fecha_vencimiento,
+    state
+)
+VALUES
+(
+    'Producto Demo',
+    'Producto de prueba',
+    25.50,
+    'PROD-DEMO',
+    100,
+    1,
+    '2030-12-31',
+    'A'
+);
 GO
 
 
--- ========================================
--- 10.2 JOINs COMPLEJOS (MINIMO 3 TIPOS)
--- ========================================
-
--- [J1] INNER JOIN
--- Construccion: cliente -> pedido -> detalle_pedido -> producto.
--- Funcionamiento: solo aparecen compras con coincidencia completa.
-SELECT
-    c.id AS cliente_id,
-    c.nombre + ' ' + c.apellido AS cliente,
-    p.numero AS nro_pedido,
-    p.fecha,
-    pr.codigo AS producto_codigo,
-    pr.nombre AS producto,
-    dp.cantidad,
-    dp.subtotal
-FROM cliente c
-INNER JOIN pedido p ON p.cliente_id = c.id
-INNER JOIN detalle_pedido dp ON dp.pedido_id = p.id
-INNER JOIN producto pr ON pr.id = dp.producto_id
-WHERE c.state = 'A' AND p.state = 'A'
-ORDER BY p.fecha DESC;
-GO
-
--- [J2] LEFT JOIN
--- Construccion: cliente como base y pedido como opcional.
--- Funcionamiento: incluye clientes sin pedidos (agregados en 0).
-SELECT
-    c.id,
-    c.nombre + ' ' + c.apellido AS cliente,
-    c.email,
-    COUNT(p.id) AS total_pedidos,
-    ISNULL(SUM(p.total), 0) AS monto_total
-FROM cliente c
-LEFT JOIN pedido p ON p.cliente_id = c.id AND p.state = 'A'
-GROUP BY c.id, c.nombre, c.apellido, c.email
-ORDER BY monto_total DESC;
-GO
-
--- [J3] RIGHT JOIN
--- Construccion: pedido (izquierda), cliente (derecha).
--- Funcionamiento: lista todos los clientes aunque no tengan pedido.
-SELECT
-    c.id AS cliente_id,
-    c.nombre + ' ' + c.apellido AS cliente,
-    p.id AS pedido_id,
-    p.numero,
-    p.total
-FROM pedido p
-RIGHT JOIN cliente c ON p.cliente_id = c.id
-ORDER BY c.id, p.numero;
-GO
-
--- [J4] FULL OUTER JOIN
--- Construccion: cliente y contacto unidos por email.
--- Funcionamiento: diagnostica coincidencias y faltantes en ambos lados.
-SELECT
-    ISNULL(c.email, ct.email) AS email_relacion,
-    c.id AS cliente_id,
-    c.nombre + ' ' + c.apellido AS cliente,
-    ct.id AS contacto_id,
-    ct.nombre AS contacto,
-    CASE
-        WHEN c.id IS NULL THEN 'CONTACTO SIN CLIENTE'
-        WHEN ct.id IS NULL THEN 'CLIENTE SIN CONTACTO'
-        ELSE 'RELACION COMPLETA'
-    END AS diagnostico
-FROM cliente c
-FULL OUTER JOIN contacto ct ON c.email = ct.email
-ORDER BY email_relacion;
+UPDATE producto
+SET nombre = 'Producto Demo Actualizado',
+    precio = 30.00,
+    stock = 80,
+    state = 'I'
+WHERE codigo = 'PROD-DEMO';
 GO
 
 
--- ========================================
--- 10.3 CONSULTAS + INDICES (ANTES Y DESPUES)
--- ========================================
-SET STATISTICS IO ON;
-SET STATISTICS TIME ON;
-GO
-
--- [I1] Indice compuesto + INCLUDE
-DROP INDEX IF EXISTS ix_cliente_state_apellido_nombre ON cliente;
-GO
--- ANTES
-SELECT c.id, c.apellido, c.nombre, c.email, c.telefono
-FROM cliente c
-WHERE c.state = 'A' AND c.apellido LIKE 'M%'
-ORDER BY c.apellido, c.nombre;
-GO
-CREATE INDEX ix_cliente_state_apellido_nombre
-    ON cliente (state, apellido, nombre)
-    INCLUDE (email, telefono);
-GO
--- DESPUES
-SELECT c.id, c.apellido, c.nombre, c.email, c.telefono
-FROM cliente c
-WHERE c.state = 'A' AND c.apellido LIKE 'M%'
-ORDER BY c.apellido, c.nombre;
-GO
-
--- [I2] Filtered index
-DROP INDEX IF EXISTS ix_cliente_credito_activo_filtrado ON cliente;
-GO
--- ANTES
-SELECT TOP (10) c.id, c.nombre, c.apellido, c.limite_credito, c.email
-FROM cliente c
-WHERE c.state = 'A' AND c.limite_credito >= 2500
-ORDER BY c.limite_credito DESC;
-GO
-CREATE INDEX ix_cliente_credito_activo_filtrado
-    ON cliente (limite_credito DESC)
-    INCLUDE (nombre, apellido, email)
-    WHERE state = 'A';
-GO
--- DESPUES
-SELECT TOP (10) c.id, c.nombre, c.apellido, c.limite_credito, c.email
-FROM cliente c
-WHERE c.state = 'A' AND c.limite_credito >= 2500
-ORDER BY c.limite_credito DESC;
-GO
-
--- [I3] Spatial index
-DROP INDEX IF EXISTS sidx_cliente_ubicacion ON cliente;
-GO
-DECLARE @punto_ref GEOGRAPHY = geography::Point(-12.0464, -77.0428, 4326);
--- ANTES
-SELECT c.id, c.nombre, c.apellido, c.email,
-       c.ubicacion.STDistance(@punto_ref) AS distancia_metros
-FROM cliente c
-WHERE c.ubicacion IS NOT NULL
-  AND c.ubicacion.STDistance(@punto_ref) <= 50000
-ORDER BY distancia_metros;
-GO
-CREATE SPATIAL INDEX sidx_cliente_ubicacion
-ON cliente(ubicacion)
-USING GEOGRAPHY_AUTO_GRID
-WITH (CELLS_PER_OBJECT = 16);
-GO
-DECLARE @punto_ref2 GEOGRAPHY = geography::Point(-12.0464, -77.0428, 4326);
--- DESPUES
-SELECT c.id, c.nombre, c.apellido, c.email,
-       c.ubicacion.STDistance(@punto_ref2) AS distancia_metros
-FROM cliente c
-WHERE c.ubicacion IS NOT NULL
-  AND c.ubicacion.STDistance(@punto_ref2) <= 50000
-ORDER BY distancia_metros;
-GO
-
-SET STATISTICS IO OFF;
-SET STATISTICS TIME OFF;
+SELECT *
+FROM auditoria_producto
+ORDER BY fecha_evento DESC;
 GO
 
 
--- ========================================
--- 10.4 TRIGGERS (2) DE CLIENTE
--- ========================================
-IF OBJECT_ID('dbo.cliente_bitacora', 'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.cliente_bitacora (
-        id BIGINT IDENTITY(1,1) PRIMARY KEY,
-        cliente_id BIGINT NULL,
-        accion VARCHAR(20) NOT NULL,
-        usuario_bd SYSNAME NOT NULL DEFAULT SUSER_SNAME(),
-        fecha_evento DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
-        detalle NVARCHAR(4000) NULL,
-        old_data NVARCHAR(MAX) NULL,
-        new_data NVARCHAR(MAX) NULL
-    );
-END;
-GO
-
--- [T1] AFTER INSERT: valida JSON y registra alta.
-DROP TRIGGER IF EXISTS tr_cliente_after_insert;
-GO
-CREATE TRIGGER tr_cliente_after_insert
-ON cliente
-AFTER INSERT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF EXISTS (
-        SELECT 1
-        FROM inserted i
-        WHERE i.preferencias IS NOT NULL
-          AND ISJSON(i.preferencias) <> 1
-    )
-    BEGIN
-        THROW 50011, 'JSON invalido en cliente.preferencias. Operacion cancelada.', 1;
-    END;
-
-    INSERT INTO dbo.cliente_bitacora (cliente_id, accion, detalle, new_data)
-    SELECT
-        i.id,
-        'INSERT',
-        'Alta de cliente',
-        (
-            SELECT i.nombre, i.apellido, i.email, i.telefono, i.limite_credito, i.state
-            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
-        )
-    FROM inserted i;
-END;
-GO
-
--- [T2] AFTER UPDATE: audita cambios sensibles.
-DROP TRIGGER IF EXISTS tr_cliente_after_update;
-GO
-CREATE TRIGGER tr_cliente_after_update
-ON cliente
-AFTER UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    INSERT INTO dbo.cliente_bitacora (cliente_id, accion, detalle, old_data, new_data)
-    SELECT
-        i.id,
-        'UPDATE',
-        'Cambio sensible en cliente',
-        (
-            SELECT d.email, d.telefono, d.limite_credito, d.state
-            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
-        ),
-        (
-            SELECT i.email, i.telefono, i.limite_credito, i.state
-            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
-        )
-    FROM inserted i
-    INNER JOIN deleted d ON d.id = i.id
-    WHERE ISNULL(i.email, '') <> ISNULL(d.email, '')
-       OR ISNULL(i.telefono, '') <> ISNULL(d.telefono, '')
-       OR ISNULL(i.limite_credito, -1) <> ISNULL(d.limite_credito, -1)
-       OR ISNULL(i.state, '') <> ISNULL(d.state, '');
-END;
-GO
 
 
--- ========================================
--- 10.5 PRUEBAS RAPIDAS (CLIENTE)
--- ========================================
-SELECT TOP (20) * FROM vw_cliente_resumen_compras ORDER BY monto_total_activo DESC;
-GO
-SELECT TOP (20) * FROM vw_cliente_preferencias_geo ORDER BY id;
-GO
-
-IF NOT EXISTS (SELECT 1 FROM cliente WHERE email = 'cliente.demotrigger@mail.com')
-BEGIN
-    INSERT INTO cliente (
-        nombre, apellido, email, telefono, direccion,
-        fecha_nacimiento, limite_credito, preferencias, ubicacion, state
-    )
-    VALUES (
-        'Cliente', 'DemoTrigger', 'cliente.demotrigger@mail.com', '900111222', 'Lima',
-        '1995-01-01', 2300,
-        '{"notificaciones":true,"idioma":"es","descuento":5}',
-        geography::Point(-12.0500, -77.0400, 4326),
-        'A'
-    );
-END;
-GO
-
-UPDATE cliente
-SET limite_credito = limite_credito + 100,
-    telefono = '900333444',
-    updated_at = SYSDATETIME()
-WHERE email = 'cliente.demotrigger@mail.com';
-GO
-
-SELECT TOP (50)
-    id,
-    cliente_id,
-    accion,
-    usuario_bd,
-    fecha_evento,
-    detalle,
-    old_data,
-    new_data
-FROM dbo.cliente_bitacora
-ORDER BY id DESC;
-GO
--- ========================================
--- Mostrar tablas principales
--- ========================================
-SELECT * FROM cliente;
-SELECT * FROM pedido;
-SELECT * FROM detalle_pedido;
-SELECT * FROM producto;
-SELECT * FROM proveedores;
