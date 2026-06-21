@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  api:
+    image: massielgomezpinto/massielpinto:backend-1.0
+    container_name: springboot-sqlserver
+    ports:
+      - "8085:8085"
+    environment:
+      - PORT=8085
+      - SERVER_URL=http://localhost:8085
+      - SPRING_DATASOURCE_URL=jdbc:sqlserver://sqlserver-db:1433;databaseName=model;encrypt=true;trustServerCertificate=true
+      - SPRING_DATASOURCE_USERNAME=sa
+      - SPRING_DATASOURCE_PASSWORD=Alexis123!
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.microsoft.sqlserver.jdbc.SQLServerDriver
+    networks:
+      - my-network
+
+networks:
+  my-network:
+    external: true

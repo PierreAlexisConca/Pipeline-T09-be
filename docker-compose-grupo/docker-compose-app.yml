@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# EC2 1 — Backend Spring Boot + Frontend Angular
+# Ejecutar en la instancia del backend/frontend
+#
+# ANTES DE LEVANTAR: reemplaza IP_PRIVADA_EC2_BD
+# por la IP privada de tu instancia EC2 de base de datos
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Levantar:      docker compose -f docker-compose-app.yml up -d
+# Bajar:         docker compose -f docker-compose-app.yml down
+# Logs backend:  docker logs springboot-backend -f
+# Logs frontend: docker logs angular-frontend -f
+
+version: '3'
+
+services:
+
+  backend:
+    image: concaflores/proyectobackend:latest
+    container_name: springboot-backend
+    ports:
+      - "8086:8086"
+    environment:
+      - PORT=8086
+      - SERVER_URL=http://localhost:8086
+      # ↓ Reemplaza por la IP PRIVADA de tu EC2 de base de datos
+      # Ejemplo: - SPRING_DATASOURCE_URL=jdbc:sqlserver://172.31.95.71:1433;databaseName=agro_db;encrypt=true;trustServerCertificate=true
+      - SPRING_DATASOURCE_URL=jdbc:sqlserver://IP_PRIVADA_EC2_BD:1433;databaseName=agro_db;encrypt=true;trustServerCertificate=true
+      - SPRING_DATASOURCE_USERNAME=sa
+      - SPRING_DATASOURCE_PASSWORD=Alexis123!
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.microsoft.sqlserver.jdbc.SQLServerDriver
+      # ↓ Reemplaza por la IP PÚBLICA de esta instancia EC2 (la del backend+frontend)
+      # Ejemplo: - CORS_ALLOWED_ORIGINS=http://54.234.136.243
+      - CORS_ALLOWED_ORIGINS=http://IP_PUBLICA_EC2_1
+    networks:
+      - my-network
+    restart: unless-stopped
+
+  frontend:
+    image: concaflores/proyectofrontend:latest
+    container_name: angular-frontend
+    ports:
+      - "80:80"
+    networks:
+      - my-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  my-network:
+    external: true

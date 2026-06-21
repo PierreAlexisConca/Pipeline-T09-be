@@ -1,0 +1,60 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose-grupo — Backend Spring Boot (uso local)
+#
+# Cada integrante cambia la imagen por la suya:
+#   image: TU_USUARIO_DOCKERHUB/proyectobackend:latest
+#
+# El contenedor de SQL Server debe estar corriendo con el nombre "sqlserver"
+# en la misma red my-network. Levanta primero docker-compose-db.yml.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Levantar:   docker compose -f docker-compose-grupo/docker-compose-be-local.yml up -d
+# Bajar:      docker compose -f docker-compose-grupo/docker-compose-be-local.yml down
+# Ver logs:   docker logs springboot-backend -f
+# Swagger:    http://localhost:8086/swagger-ui.html
+
+version: '3'
+
+services:
+  backend:
+    image: concaflores/proyectobackend:latest   # <-- cambia por tu usuario de DockerHub
+    container_name: springboot-backend
+    ports:
+      - "8086:8086"
+    environment:
+      - PORT=8086
+      - SERVER_URL=http://localhost:8086
+      # Apunta al contenedor sqlserver por nombre (misma red Docker)
+      - SPRING_DATASOURCE_URL=jdbc:sqlserver://sqlserver:1433;databaseName=agro_db;encrypt=true;trustServerCertificate=true
+      - SPRING_DATASOURCE_USERNAME=sa
+      - SPRING_DATASOURCE_PASSWORD=Alexis123!
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.microsoft.sqlserver.jdbc.SQLServerDriver
+      # CORS local: permite peticiones desde el frontend en localhost
+      - CORS_ALLOWED_ORIGINS=http://localhost
+    networks:
+      - my-network
+    restart: unless-stopped
+
+networks:
+  my-network:
+    external: true
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PASOS PARA USAR ESTE ARCHIVO:
+#
+# 1. Construir tu imagen del backend (desde ASE251S3_T09-be-develop/):
+#    docker build -t TU_USUARIO/proyectobackend:latest -f Dockerfile-grupo/Dockerfile .
+#
+# 2. (Opcional) Subir a DockerHub:
+#    docker push TU_USUARIO/proyectobackend:latest
+#
+# 3. Asegúrate de que la red existe:
+#    docker network create my-network
+#
+# 4. Levanta primero la base de datos:
+#    docker compose -f docker-compose-grupo/docker-compose-db.yml up -d
+#
+# 5. Levanta el backend:
+#    docker compose -f docker-compose-grupo/docker-compose-be-local.yml up -d
+# ─────────────────────────────────────────────────────────────────────────────

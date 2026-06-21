@@ -1,0 +1,22 @@
+# docker-compose -f docker-compose-db.yml up -d
+# docker-compose -f docker-compose-db.yml down
+version: '3'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest@sha256:2dca9ee5cd5316952d9b6ef4a0c088ac95b55e3502accdda0fc12ad6ede7b905
+    container_name: sqlserver-db
+    environment:
+      SA_PASSWORD: "Alexis123!"
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    networks:
+      - my-network
+    restart: unless-stopped
+
+networks:
+  my-network:
+    external: true
+    name: my-network

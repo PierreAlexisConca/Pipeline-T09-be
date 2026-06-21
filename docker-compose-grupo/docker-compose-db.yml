@@ -1,0 +1,28 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# EC2 2 — Base de Datos (SQL Server)
+# Ejecutar en la instancia dedicada a la BD
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Levantar:  docker compose -f docker-compose-db.yml up -d
+# Bajar:     docker compose -f docker-compose-db.yml down
+# Ver logs:  docker logs sqlserver -f
+
+version: '3'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      SA_PASSWORD: "Alexis123!"
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    networks:
+      - my-network
+    restart: unless-stopped
+
+networks:
+  my-network:
+    external: true

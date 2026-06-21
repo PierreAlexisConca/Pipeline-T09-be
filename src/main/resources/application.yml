@@ -1,13 +1,16 @@
 server:
-  port: ${PORT}  # Valor por defecto si PORT no está configurado
-  url: ${SERVER_URL}  # Valor por defecto si SERVER_URL no está configurado
+  port: ${PORT:8086}  # Valor por defecto si PORT no está configurado
+  url: ${SERVER_URL:http://localhost:8086}  # Valor por defecto si SERVER_URL no está configurado
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}  # Orígenes permitidos, separados por coma
 
 spring:
   datasource:
-    url: ${DATABASE_URL}  ## Cambiar "model" por tu base de datos
-    username: ${DATABASE_USERNAME}          ## Cambiar por tu usuario
-    password: ${DATABASE_PASSWORD}          ## Cambiar por tu contraseña
-    driver-class-name: ${DATABASE_DRIVER}
+    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://localhost:1433;databaseName=agro_db;encrypt=true;trustServerCertificate=true}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:Alexis123!}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
   jpa:
     database-platform: org.hibernate.dialect.SQLServerDialect
     hibernate:
@@ -20,4 +23,4 @@ springdoc:
     path: /api-docs
   swagger-ui:
     enabled: true
-    path: /swagger-ui.html # Ruta para acceder a Swagger UI: http://localhost:8085/swagger-ui.html
+    path: /swagger-ui.html # Ruta para acceder a Swagger UI: http://localhost:8086/swagger-ui.html
